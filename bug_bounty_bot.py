@@ -16,9 +16,6 @@ from asyncio.subprocess import PIPE, STDOUT
 from urllib.parse import urlparse
 from os.path import expanduser
 
-#guild_id = "645718647905583128"
-#GUILD = discord.Object(id=guild_id)
-
 # Load environment variables
 TOKEN = os.getenv('TOKEN')
 
