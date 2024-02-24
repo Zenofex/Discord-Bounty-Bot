@@ -525,6 +525,8 @@ class bug_finder:
 
     async def dns_recon(self, domain):
         domains = {}
+        if not os.path.exists("%s/.config" % expanduser("~")):
+            os.makedirs("%s/.config" % expanduser("~"))
         #dnsrecon_cmd = "python3 /usr/local/src/dnsrecon/dnsrecon.py -t std,brt -D /usr/local/src/subdomain-dictionary.txt -d %s -n 8.8.8.8 -b -y -k -c ~/.config/%s.domains.csv" % (shlex.quote(domain), shlex.quote(domain))
         csv_loc = "%s/.config/%s.domains.csv" % (expanduser("~"), shlex.quote(domain))
         dnsrecon_cmd = "python3 %s -t std,brt,axfr -D /usr/local/src/subdomain-dictionary.txt -d '%s' -n 8.8.8.8 -c '%s' " % (DNSRECON_LOC, shlex.quote(domain), csv_loc)
