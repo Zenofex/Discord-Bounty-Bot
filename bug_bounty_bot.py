@@ -474,7 +474,13 @@ class bug_finder:
 
     async def nmap(self, domain):
         open_ports = {}
-        (stdout_log, stderr_log) = await self.exec_cmd("sudo %s -sV -Pn -T3 '%s'" % (NMAP_LOC, shlex.quote(domain)))
+
+        if os.geteuid() != 0:
+            nmap_cmd = "sudo %s -sV -Pn -T3 '%s'" % (NMAP_LOC, shlex.quote(domain))
+        else:
+            nmap_cmd = "%s -sV -Pn -T3 '%s'" % (NMAP_LOC, shlex.quote(domain))
+
+        (stdout_log, stderr_log) = await self.exec_cmd(nmap_cmd)
         if stdout_log is None and stderr_log is None:
             return {}
         for line in stdout_log.split('\n'):
