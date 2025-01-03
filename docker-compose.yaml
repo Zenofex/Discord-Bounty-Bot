@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  bug-bounty-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - TOKEN=${TOKEN}
+    cap_add:
+      - NET_ADMIN
+    command: python3 bug_bounty_bot.py

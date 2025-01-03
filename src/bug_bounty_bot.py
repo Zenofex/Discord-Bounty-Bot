@@ -30,6 +30,9 @@ SQLMAP_LOC = os.getenv('SQLMAP_LOC', '/usr/local/src/sqlmap/sqlmap.py')
 DIRB_LOC = os.getenv('DIRB_LOC', 'dirb')
 NMAP_LOC = os.getenv('NMAP_LOC', 'nmap')
 
+# Global variable to hold the continuous attack task
+continuous_attack_task = None
+
 class DiscordBot(discord.Client):
     def __init__(self, *, intents: discord.Intents, heartbeat_timeout: int = 35):
         super().__init__(intents=intents, heartbeat_timeout=heartbeat_timeout)
@@ -116,7 +119,8 @@ async def send_channel_msg(message_ctx, txt, file_attach=[], followup=True):
         if not followup:
             await message_ctx.response.send_message(content="", embeds=embeds, files=file_attach)
         else:
-            await message_ctx.followup.send(content="", embeds=embeds, files=file_attach)
+            await message_ctx.channel.send(content="", embeds=embeds, files=file_attach)
+            #await message_ctx.followup.send(content="", embeds=embeds, files=file_attach)
       
         return True
     except Exception as e:
@@ -220,6 +224,42 @@ async def arachni(message_ctx: discord.Interaction, url: str, followup: bool=Fal
         print(traceback.format_exc())
         await changestatus(message_ctx)
         return {}
+
+@client.tree.command(description="Starts a continuous random attack until stopped.")
+async def start_attack_random(interaction: discord.Interaction):
+    global continuous_attack_task
+
+    # Check if the task is already running
+    if continuous_attack_task is not None:
+        await interaction.response.send_message("[I] Continuous attack is already running.")
+        return
+
+    # Start the attack task
+    await interaction.response.send_message("[I] Starting continuous attack...")
+    continuous_attack_task = client.loop.create_task(run_continuous_attack(interaction))
+
+@client.tree.command(description="Stops the continuous random attack.")
+async def stop_attack_random(interaction: discord.Interaction):
+    global continuous_attack_task
+
+    # Check if there's a running task to cancel
+    if continuous_attack_task is None:
+        await interaction.response.send_message("[I] No continuous attack is currently running.")
+        return
+
+    # Cancel the continuous attack
+    continuous_attack_task.cancel()
+    continuous_attack_task = None
+    await interaction.response.send_message("[I] Continuous attack stopped.")
+
+# Task to continuously run attackrandom command
+async def run_continuous_attack(interaction):
+    try:
+        while True:
+            await attackrandom(interaction)  # Calling the original attackrandom function
+            await asyncio.sleep(10)  # Adjust interval as needed
+    except asyncio.CancelledError:
+        print("[I] Continuous attack task was cancelled.")
 
 @client.tree.command(description='Grab a random host from the arkadiyt/bounty-targets-data (bug bounty host) repository and attack it.')
 async def attackrandom(message_ctx: discord.Interaction, followup: bool=False):
@@ -476,9 +516,9 @@ class bug_finder:
         open_ports = {}
 
         if os.geteuid() != 0:
-            nmap_cmd = "sudo %s -sV -Pn -T3 '%s'" % (NMAP_LOC, shlex.quote(domain))
+            nmap_cmd = "sudo %s -sV -Pn '%s'" % (NMAP_LOC, shlex.quote(domain))
         else:
-            nmap_cmd = "%s -sV -Pn -T3 '%s'" % (NMAP_LOC, shlex.quote(domain))
+            nmap_cmd = "%s -sV -Pn '%s'" % (NMAP_LOC, shlex.quote(domain))
 
         (stdout_log, stderr_log) = await self.exec_cmd(nmap_cmd)
         if stdout_log is None and stderr_log is None:
@@ -496,7 +536,7 @@ class bug_finder:
 
     async def sqlmapcrawl(self, target):
         sqlmap_results = []
-        sqlmap_cmd = "python3 %s -u '%s' --forms --batch --crawl=3 --threads=1 --tamper='between,randomcase,space2comment' -v 3 --level=1 --random-agent -o --smart --current-user" % (SQLMAP_LOC, shlex.quote(target))
+        sqlmap_cmd = "python3 %s -u '%s' --forms --batch --crawl=3 --threads=1 --tamper='between,randomcase,space2comment' -v 3 --level=1 --random-agent --smart --current-user" % (SQLMAP_LOC, shlex.quote(target))
         (stdout_log, stderr_log) = await self.exec_cmd(sqlmap_cmd)
         if stdout_log is None and stderr_log is None:
             return {}
@@ -550,9 +590,9 @@ class bug_finder:
             if idx != 0:
                 csv_vals = line.split(',')
                 if len(csv_vals) >= 3 :
-                    d_type = csv_vals[0] 
-                    d_name = csv_vals[1]
-                    d_val = csv_vals[2]
+                    d_type = csv_vals[1] 
+                    d_name = csv_vals[2]
+                    d_val = csv_vals[3]
                     if d_type == 'A':
                         domains[d_name] = d_val
 
